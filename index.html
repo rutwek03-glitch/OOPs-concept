@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OOP Adventure: Learn & Play!</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Nunito', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#4F46E5', // Indigo
+                        secondary: '#F472B6', // Pink
+                        success: '#10B981', // Emerald
+                        danger: '#EF4444', // Red
+                        warning: '#F59E0B', // Amber
+                        locked: '#9CA3AF', // Gray
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #e0e7ff 0%, #fce7f3 100%);
+            min-height: 100vh;
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        .btn-game {
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 0 0 rgba(0,0,0,0.2);
+        }
+        .btn-game:active:not(:disabled) {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 0 rgba(0,0,0,0.2);
+        }
+        .btn-game:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        /* Map Path Animations */
+        .path-line {
+            position: absolute;
+            z-index: 0;
+            border-left: 4px dashed #9CA3AF;
+            height: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            top: 100%;
+        }
+        .path-line.unlocked {
+            border-color: #4F46E5;
+            animation: dash 1s linear infinite;
+        }
+        @keyframes dash {
+            to { stroke-dashoffset: -20; }
+        }
+
+        /* Module Animations */
+        .mod1-container { position: relative; height: 150px; display: flex; justify-content: center; align-items: center; }
+        .blueprint-car, .actual-car { position: absolute; transition: all 1s ease-in-out; font-size: 4rem; }
+        .blueprint-car { color: #3b82f6; opacity: 1; transform: scale(1); filter: drop-shadow(0 0 5px rgba(59, 130, 246, 0.5)); border: 2px dashed #3b82f6; padding: 10px; border-radius: 10px; }
+        .actual-car { color: #ef4444; opacity: 0; transform: scale(0.5); }
+        .mod1-container:hover .blueprint-car { opacity: 0; transform: scale(1.5); }
+        .mod1-container:hover .actual-car { opacity: 1; transform: scale(1); filter: drop-shadow(0 10px 10px rgba(0,0,0,0.2)); }
+
+        .mod2-container { position: relative; height: 150px; display: flex; justify-content: space-around; align-items: center; }
+        .encap-box { position: relative; font-size: 4rem; color: #f59e0b; }
+        .shield { position: absolute; top: -10px; right: -10px; font-size: 2rem; color: #10b981; animation: bounce 2s infinite; }
+        .abst-box { font-size: 4rem; color: #8b5cf6; }
+
+        .mod3-container { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+        .parent-car { font-size: 3rem; color: #6366f1; border: 2px solid #6366f1; padding: 10px; border-radius: 10px; position: relative; }
+        .parent-car::after { content: ''; position: absolute; bottom: -20px; left: 50%; width: 2px; height: 20px; background: #9ca3af; }
+        .children-cars { display: flex; gap: 40px; position: relative; margin-top: 10px; }
+        .children-cars::before { content: ''; position: absolute; top: -10px; left: 20%; right: 20%; height: 2px; background: #9ca3af; }
+        .child-car { font-size: 2.5rem; padding: 10px; border-radius: 10px; position: relative; }
+        .child-car::before { content: ''; position: absolute; top: -10px; left: 50%; width: 2px; height: 10px; background: #9ca3af; }
+        .child1 { color: #ec4899; border: 2px solid #ec4899; }
+        .child2 { color: #14b8a6; border: 2px solid #14b8a6; }
+
+        .mod4-container { display: flex; flex-direction: column; gap: 15px; width: 100%; max-width: 400px; margin: 0 auto; overflow: hidden; padding-bottom: 20px;}
+        .track { width: 100%; border-bottom: 2px dashed #9ca3af; position: relative; height: 40px; }
+        .poly-car { position: absolute; bottom: 0; left: 0; font-size: 2rem; transition: transform 2s; }
+        .poly-btn:active ~ .mod4-container .poly-car-1 { transform: translateX(250px); transition-timing-function: linear; }
+        .poly-btn:active ~ .mod4-container .poly-car-2 { transform: translateX(250px); transition-timing-function: cubic-bezier(0.1, 0.7, 1.0, 0.1); }
+        .poly-btn:active ~ .mod4-container .poly-car-3 { transform: translateX(250px); transition-timing-function: ease-in-out; }
+
+        /* General Utilities */
+        .hidden-view { display: none !important; }
+        .fade-in { animation: fadeIn 0.4s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .quiz-option { transition: all 0.2s; cursor: pointer; }
+        .quiz-option:hover { transform: scale(1.02); }
+        .quiz-option.selected { border-color: #4F46E5; background-color: #EEF2FF; }
+        .quiz-option.correct { border-color: #10B981; background-color: #D1FAE5; }
+        .quiz-option.wrong { border-color: #EF4444; background-color: #FEE2E2; }
+
+        /* Leaderboard styling */
+        .rank-1 { background: linear-gradient(to right, #FFFBEB, #FEF3C7); border-left: 6px solid #F59E0B; }
+        .rank-2 { background: linear-gradient(to right, #F3F4F6, #E5E7EB); border-left: 6px solid #9CA3AF; }
+        .rank-3 { background: linear-gradient(to right, #FEF2F2, #FCE7F3); border-left: 6px solid #D97706; }
+    </style>
+</head>
+<body class="text-gray-800 antialiased font-sans">
+
+    <header class="bg-white shadow-md p-4 sticky top-0 z-50">
+        <div class="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <h1 class="text-2xl font-extrabold text-primary flex items-center gap-2 cursor-pointer" onclick="goHome()">
+                <i class="fa-solid fa-gamepad"></i> OOP Adventure
+            </h1>
+            
+            <div id="user-stats" class="hidden-view flex flex-wrap items-center justify-center gap-4">
+                <div class="bg-amber-100 text-amber-600 px-4 py-2 rounded-full font-bold flex items-center gap-2 shadow-sm">
+                    <i class="fa-solid fa-star"></i> <span id="xp-display">0 XP</span>
+                </div>
+                <div class="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-full shadow-sm">
+                    <span class="text-sm font-bold text-gray-500">Progress:</span>
+                    <div class="w-24 h-3 bg-gray-200 rounded-full overflow-hidden">
+                        <div id="progress-bar" class="h-full bg-success transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                    <span id="progress-text" class="text-sm font-bold text-success">0/4</span>
+                </div>
+                <button onclick="showLeaderboard()" class="btn-game bg-primary text-white px-4 py-2 rounded-xl font-bold text-sm">
+                    <i class="fa-solid fa-trophy"></i> Leaderboard
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto p-4 py-8 relative">
+        
+        <section id="view-login" class="fade-in flex flex-col items-center justify-center min-h-[60vh]">
+            <div class="bg-white rounded-3xl shadow-xl p-10 max-w-md w-full text-center border-4 border-white">
+                <div class="text-6xl text-primary mb-6"><i class="fa-solid fa-user-astronaut"></i></div>
+                <h2 class="text-3xl font-extrabold text-gray-800 mb-2">Student Portal</h2>
+                <p class="text-gray-600 mb-8">Enter your name to track your XP and join the leaderboard!</p>
+                
+                <div id="login-loading" class="text-primary font-bold text-lg hidden-view">
+                    <i class="fa-solid fa-spinner fa-spin mr-2"></i> Connecting to Class...
+                </div>
+
+                <div id="login-form">
+                    <input type="text" id="student-name" placeholder="Enter your first name..." class="w-full bg-gray-100 border-2 border-gray-200 rounded-xl p-4 text-lg font-bold text-gray-700 mb-6 focus:outline-none focus:border-primary transition-colors" maxlength="15">
+                    <button onclick="handleLogin()" class="btn-game w-full py-4 bg-primary text-white font-extrabold text-xl rounded-xl hover:bg-indigo-700 flex justify-center items-center gap-2">
+                        Start Learning <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section id="view-map" class="hidden-view fade-in flex flex-col items-center py-10">
+            <div class="text-center mb-10">
+                <h2 class="text-4xl font-extrabold text-gray-800 mb-2">Hello, <span id="welcome-name" class="text-primary">Student</span>!</h2>
+                <p class="text-lg text-gray-600">Complete modules to earn XP and unlock the next level.</p>
+            </div>
+            
+            <div id="map-nodes" class="flex flex-col items-center gap-[50px] relative w-full max-w-md">
+                <!-- Nodes generated by JS -->
+            </div>
+        </section>
+
+        <section id="view-leaderboard" class="hidden-view fade-in max-w-2xl mx-auto py-6">
+            <button onclick="goHome()" class="mb-6 text-gray-500 hover:text-primary font-bold flex items-center gap-2">
+                <i class="fa-solid fa-arrow-left"></i> Back to Map
+            </button>
+            <div class="bg-white rounded-3xl shadow-xl p-8 border-4 border-white">
+                <div class="text-center mb-8">
+                    <div class="text-6xl text-amber-500 mb-4"><i class="fa-solid fa-trophy"></i></div>
+                    <h2 class="text-3xl font-extrabold text-gray-800">Global Leaderboard</h2>
+                    <p class="text-gray-500 font-bold mt-2">Top students mastering OOP Concepts</p>
+                </div>
+                
+                <div id="leaderboard-list" class="space-y-3">
+                    <div class="text-center text-gray-500 font-bold py-8"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading scores...</div>
+                </div>
+            </div>
+        </section>
+
+        <section id="view-lesson" class="hidden-view fade-in max-w-2xl mx-auto">
+            <button onclick="goHome()" class="mb-4 text-gray-500 hover:text-primary font-bold flex items-center gap-2">
+                <i class="fa-solid fa-arrow-left"></i> Back to Map
+            </button>
+            <div class="bg-white rounded-3xl shadow-xl p-8 border-4 border-white">
+                <div class="flex justify-between items-start mb-2">
+                    <h2 id="lesson-title" class="text-3xl font-extrabold text-primary">Title</h2>
+                    <span class="bg-amber-100 text-amber-600 px-3 py-1 rounded-full text-sm font-bold shadow-sm border border-amber-200">+100 XP</span>
+                </div>
+                <div id="lesson-animation" class="my-8 bg-gray-50 rounded-2xl p-6 border-2 border-gray-100 flex flex-col items-center">
+                    <!-- Animation injected here -->
+                </div>
+                <div id="lesson-content" class="text-lg leading-relaxed text-gray-700 space-y-4 mb-8">
+                    <!-- Content injected here -->
+                </div>
+                <button id="btn-take-exam" class="btn-game w-full py-4 bg-secondary text-white font-extrabold text-xl rounded-xl hover:bg-pink-500">
+                    <i class="fa-solid fa-graduation-cap"></i> Take 5-Question Exam!
+                </button>
+            </div>
+        </section>
+
+        <section id="view-quiz" class="hidden-view fade-in max-w-2xl mx-auto">
+            <div class="bg-white rounded-3xl shadow-xl p-8 border-4 border-white">
+                <div class="flex justify-between items-center mb-6 border-b pb-4">
+                    <h2 class="text-2xl font-extrabold text-gray-800">Knowledge Check</h2>
+                    <span id="quiz-counter" class="bg-primary text-white px-3 py-1 rounded-full font-bold text-sm">Q 1/5</span>
+                </div>
+                
+                <h3 id="question-text" class="text-xl font-bold text-gray-800 mb-6">Question goes here?</h3>
+                
+                <div id="options-container" class="space-y-4 mb-8">
+                    <!-- Options injected here -->
+                </div>
+
+                <button id="btn-submit-answer" class="btn-game w-full py-4 bg-primary text-white font-extrabold text-xl rounded-xl hover:bg-indigo-700 disabled:opacity-50">
+                    Submit Answer
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <div id="custom-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-[100] hidden-view flex justify-center items-center p-4">
+        <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl transform scale-100 transition-transform border-4 border-white">
+            <div id="modal-icon" class="text-6xl mb-4">🌟</div>
+            <h3 id="modal-title" class="text-3xl font-extrabold mb-2 text-gray-800">Great Job!</h3>
+            <p id="modal-msg" class="text-gray-600 mb-6 text-lg">You passed the test.</p>
+            <div id="modal-xp" class="text-amber-500 font-bold text-xl mb-6 hidden-view">+100 XP Earned!</div>
+            <button id="btn-modal-close" class="btn-game w-full py-3 bg-success text-white font-bold rounded-xl text-lg">
+                Continue
+            </button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Environment variables provided by the platform
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'oop-adventure';
+        // Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyBvhj-qHJ2QzoCPxO2yU7B2ureOMs6xUfY",
+  authDomain: "oop-leaderboard.firebaseapp.com",
+  projectId: "oop-leaderboard",
+  storageBucket: "oop-leaderboard.firebasestorage.app",
+  messagingSenderId: "152190002373",
+  appId: "1:152190002373:web:8f9c037c3ce8cc32a8bcac",
+  measurementId: "G-7LJ0JZSZT5"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+        const initialToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // State Variables
+        let userId = null;
+        let userName = "";
+        let unlockedLevel = 0;
+        let xp = 0;
+        let currentModuleId = null;
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let selectedOption = null;
+
+        // Expanded Module Data (5 questions each)
+        const moduleData = [
+            {
+                id: 0, title: "1. Classes & Objects", icon: "fa-car-side", color: "text-blue-500", bgColor: "bg-blue-500",
+                animationHTML: `
+                    <p class="text-sm text-gray-500 font-bold mb-4 uppercase tracking-widest">Hover over the blueprint!</p>
+                    <div class="mod1-container w-full">
+                        <div class="blueprint-car"><i class="fa-solid fa-house"></i></div>
+                        <div class="actual-car text-blue-600"><i class="fa-solid fa-house"></i></div>
+                    </div>
+                `,
+                contentHTML: `
+                    <p>Welcome to OOP! Everything starts with <strong>Classes</strong> and <strong>Objects</strong>.</p>
+                    <p>Think of a <strong>Class</strong> as an Architect's <em>Blueprint</em>. It is a design on paper that says a house should have 4 walls, a roof, and doors.</p>
+                    <p>An <strong>Object</strong> is the <em>actual physical house</em> built from that blueprint. You can't live in a blueprint, but you can build 100 real houses (objects) from one blueprint (class)!</p>
+                `,
+                questions: [
+                    { q: "What is a Class in OOP?", options: ["A physical item", "A blueprint or template", "A database", "A type of error"], ans: 1 },
+                    { q: "If 'Car' is the class, what is 'my red Honda Civic'?", options: ["An Object", "A Function", "A Variable", "A Method"], ans: 0 },
+                    { q: "Can you create multiple objects from a single class?", options: ["No, only one", "Yes, unlimited", "Only up to 10", "Yes, but they must be identical"], ans: 1 },
+                    { q: "Which of the following is an example of an Object?", options: ["The concept of a Dog", "A blueprint for a building", "My specific pet dog, Buddy", "The definition of a Tree"], ans: 2 },
+                    { q: "Why do we use Classes?", options: ["To make code slower", "To avoid reusing code", "To act as a reusable template to build objects", "To connect to databases"], ans: 2 }
+                ]
+            },
+            {
+                id: 1, title: "2. Encapsulation & Abstraction", icon: "fa-shield-halved", color: "text-amber-500", bgColor: "bg-amber-500",
+                animationHTML: `
+                    <p class="text-sm text-gray-500 font-bold mb-4 uppercase tracking-widest">Two concepts, one machine</p>
+                    <div class="mod2-container w-full">
+                        <div class="text-center">
+                            <div class="encap-box"><i class="fa-solid fa-gears"></i><i class="fa-solid fa-shield shield"></i></div>
+                            <p class="font-bold mt-2 text-amber-600">Encapsulation (Hidden Wires)</p>
+                        </div>
+                        <div class="text-center">
+                            <div class="abst-box"><i class="fa-solid fa-mug-hot"></i></div>
+                            <p class="font-bold mt-2 text-purple-600">Abstraction (Brew Button)</p>
+                        </div>
+                    </div>
+                `,
+                contentHTML: `
+                    <p>Let's use a <strong>Coffee Machine</strong> to understand these.</p>
+                    <p><strong>Abstraction</strong> is about <em>hiding complexity</em>. To get coffee, you just press the 'Brew' button. You don't need to know how it heats the water or grinds the beans. It's perfectly simple to use.</p>
+                    <p><strong>Encapsulation</strong> is about <em>protecting data and machinery</em>. The dangerous heating coils and electrical wires are sealed inside a plastic case (made private). If you could easily touch the wires, you might break the machine or get hurt!</p>
+                `,
+                questions: [
+                    { q: "Which concept is focused on hiding complex inner workings to make something easy to use?", options: ["Encapsulation", "Polymorphism", "Abstraction", "Inheritance"], ans: 2 },
+                    { q: "Which concept protects sensitive data from being accidentally changed by outside code?", options: ["Encapsulation", "Variables", "Abstraction", "Constructors"], ans: 0 },
+                    { q: "In the Coffee Machine analogy, the 'Brew' button represents...", options: ["A hidden variable", "Abstraction (simple interface)", "A child class", "An object"], ans: 1 },
+                    { q: "What keyword is often used in programming to achieve Encapsulation by hiding data?", options: ["public", "private", "class", "void"], ans: 1 },
+                    { q: "True or False: Abstraction makes systems harder for users to interact with.", options: ["True", "False"], ans: 1 }
+                ]
+            },
+            {
+                id: 2, title: "3. Inheritance", icon: "fa-sitemap", color: "text-emerald-500", bgColor: "bg-emerald-500",
+                animationHTML: `
+                    <p class="text-sm text-gray-500 font-bold mb-4 uppercase tracking-widest">Passing down traits</p>
+                    <div class="mod3-container w-full">
+                        <div class="parent-car"><i class="fa-solid fa-mobile-screen"></i> (Phone)</div>
+                        <div class="children-cars">
+                            <div class="child-car child1"><i class="fa-solid fa-camera"></i> (Camera Phone)</div>
+                            <div class="child-car child2"><i class="fa-solid fa-gamepad"></i> (Gaming Phone)</div>
+                        </div>
+                    </div>
+                `,
+                contentHTML: `
+                    <p>Why write the same code twice? <strong>Inheritance</strong> lets a new class automatically copy all the traits of an existing parent class.</p>
+                    <p>If we have a generic <code>Phone</code> class that can <code>makeCall()</code>, we can create a <code>SmartPhone</code> class that inherits from <code>Phone</code>.</p>
+                    <p>The <code>SmartPhone</code> instantly knows how to make calls, but we can add new features to it, like <code>browseInternet()</code> without rewriting the call code!</p>
+                `,
+                questions: [
+                    { q: "What is the main benefit of Inheritance?", options: ["Makes code run faster", "Reusing code (DRY principle)", "Hides data securely", "Converts code to binary"], ans: 1 },
+                    { q: "If 'Dog' inherits from 'Animal', 'Animal' is the...", options: ["Child class", "Parent/Super class", "Object", "Method"], ans: 1 },
+                    { q: "Can a child class have its own unique methods besides the inherited ones?", options: ["Yes", "No", "Only one", "Only if private"], ans: 0 },
+                    { q: "What is the relationship described by Inheritance?", options: ["Has-a", "Is-a", "Uses-a", "Needs-a"], ans: 1 },
+                    { q: "If a child class inherits a method, does it have to rewrite it to use it?", options: ["Yes, always", "No, it gets it automatically", "Only if it is abstract", "Yes, for security"], ans: 1 }
+                ]
+            },
+            {
+                id: 3, title: "4. Polymorphism", icon: "fa-shapes", color: "text-purple-500", bgColor: "bg-purple-500",
+                animationHTML: `
+                    <p class="text-sm text-gray-500 font-bold mb-4 uppercase tracking-widest">Hold the ATTACK button!</p>
+                    <button class="poly-btn btn-game bg-purple-500 text-white font-bold py-2 px-6 rounded-lg mb-4">ATTACK COMMAND</button>
+                    <div class="mod4-container w-full">
+                        <div class="track"><div class="poly-car poly-car-1 text-gray-500"><i class="fa-solid fa-khanda"></i> Warrior</div></div>
+                        <div class="track"><div class="poly-car poly-car-2 text-pink-500"><i class="fa-solid fa-wand-magic-sparkles"></i> Mage</div></div>
+                        <div class="track"><div class="poly-car poly-car-3 text-emerald-700"><i class="fa-solid fa-bow-arrow"></i> Archer</div></div>
+                    </div>
+                `,
+                contentHTML: `
+                    <p><strong>Polymorphism</strong> means "many forms". It allows different objects to respond to the <em>exact same command</em> in their own unique way.</p>
+                    <p>Imagine a video game where you send an <code>attack()</code> command to your party. The Warrior swings a sword. The Mage casts a fireball. The Archer shoots an arrow.</p>
+                    <p>Even though the command was exactly the same (<code>attack()</code>), the behavior changes depending on which object receives it. This is often done by <em>Overriding</em> methods.</p>
+                `,
+                questions: [
+                    { q: "What does 'Polymorphism' literally translate to?", options: ["Hidden data", "Many forms", "Blueprint", "Parent child"], ans: 1 },
+                    { q: "Sending a 'speak()' command to a Dog (barks) and Cat (meows) is an example of:", options: ["Polymorphism", "Encapsulation", "Variables", "Classes"], ans: 0 },
+                    { q: "When a child class changes how an inherited method works, it is called:", options: ["Overloading", "Overriding", "Deleting", "Abstracting"], ans: 1 },
+                    { q: "Polymorphism relies heavily on which other OOP pillar to function properly?", options: ["Database", "Inheritance", "Variables", "Loops"], ans: 1 },
+                    { q: "If multiple methods in the same class have the same name but different parameters, this is called:", options: ["Method Overriding", "Method Overloading", "Encapsulation", "Abstracting"], ans: 1 }
+                ]
+            }
+        ];
+
+        // --- STREAMING_CHUNK:DOM Elements & View Navigation ---
+        const views = ['view-login', 'view-map', 'view-leaderboard', 'view-lesson', 'view-quiz'];
+        const xpDisplay = document.getElementById('xp-display');
+        const userStats = document.getElementById('user-stats');
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        const modal = document.getElementById('custom-modal');
+
+        function showView(viewId) {
+            views.forEach(v => document.getElementById(v).classList.add('hidden-view'));
+            document.getElementById(viewId).classList.remove('hidden-view');
+            window.scrollTo(0, 0);
+        }
+
+        window.goHome = function() {
+            if(userId) {
+                renderMap();
+                showView('view-map');
+            } else {
+                showView('view-login');
+            }
+        }
+
+        window.showLeaderboard = function() {
+            showView('view-leaderboard');
+        }
+
+        // --- STREAMING_CHUNK:Firebase Auth & Profile Logic ---
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                userId = user.uid;
+                if (!userName) {
+                    // Page reload scenario, fetch existing profile
+                    await fetchOrInitUserProfile();
+                } else {
+                    // Fresh login scenario
+                    await fetchOrInitUserProfile();
+                }
+            } else {
+                showView('view-login');
+            }
+        });
+
+        window.handleLogin = async function() {
+            const nameInput = document.getElementById('student-name').value.trim();
+            if (!nameInput) {
+                showAlert("Error", "Please enter your name to join the class!", "❌", "danger");
+                return;
+            }
+            
+            document.getElementById('login-form').classList.add('hidden-view');
+            document.getElementById('login-loading').classList.remove('hidden-view');
+            
+            userName = nameInput;
+            
+            try {
+                if (initialToken) {
+                    await signInWithCustomToken(auth, initialToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                showAlert("Login Failed", "Could not connect. Try again.", "❌", "danger");
+                document.getElementById('login-form').classList.remove('hidden-view');
+                document.getElementById('login-loading').classList.add('hidden-view');
+            }
+        }
+
+        async function fetchOrInitUserProfile() {
+            if (!userId) return;
+            const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'leaderboard', userId);
+            
+            try {
+                const docSnap = await getDoc(userRef);
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    userName = data.name || userName;
+                    xp = data.xp || 0;
+                    unlockedLevel = data.unlockedLevel || 0;
+                } else {
+                    // Create new profile for leaderboard
+                    await setDoc(userRef, {
+                        name: userName,
+                        xp: xp,
+                        unlockedLevel: unlockedLevel,
+                        timestamp: Date.now()
+                    });
+                }
+                
+                document.getElementById('welcome-name').innerText = userName;
+                userStats.classList.remove('hidden-view');
+                updateProgressUI();
+                goHome();
+                setupLeaderboardListener(); // Start listening to global scores
+                
+            } catch (error) {
+                console.error("Error fetching profile:", error);
+            }
+        }
+
+        async function syncProgressToCloud() {
+            if (!userId) return;
+            const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'leaderboard', userId);
+            try {
+                await setDoc(userRef, {
+                    name: userName,
+                    xp: xp,
+                    unlockedLevel: unlockedLevel,
+                    timestamp: Date.now()
+                }, { merge: true });
+            } catch (error) {
+                console.error("Error saving progress:", error);
+            }
+        }
+
+        function updateProgressUI() {
+            const percentage = (unlockedLevel / 4) * 100;
+            progressBar.style.width = `${percentage}%`;
+            progressText.innerText = `${unlockedLevel}/4`;
+            xpDisplay.innerText = `${xp} XP`;
+        }
+
+        // --- STREAMING_CHUNK:Leaderboard Real-time Sync ---
+        function setupLeaderboardListener() {
+            const lbCollection = collection(db, 'artifacts', appId, 'public', 'data', 'leaderboard');
+            
+            onSnapshot(lbCollection, (snapshot) => {
+                const players = [];
+                snapshot.forEach(doc => {
+                    players.push({ id: doc.id, ...doc.data() });
+                });
+                
+                // Sort in memory by XP descending
+                players.sort((a, b) => (b.xp || 0) - (a.xp || 0));
+                
+                renderLeaderboardUI(players);
+            }, (error) => {
+                console.error("Leaderboard sync error:", error);
+            });
+        }
+
+        function renderLeaderboardUI(players) {
+            const container = document.getElementById('leaderboard-list');
+            container.innerHTML = '';
+            
+            if(players.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500">No students yet. Be the first!</p>';
+                return;
+            }
+
+            players.slice(0, 10).forEach((player, index) => {
+                const isMe = player.id === userId;
+                const rankClass = index === 0 ? 'rank-1' : index === 1 ? 'rank-2' : index === 2 ? 'rank-3' : 'bg-gray-50 border-l-4 border-gray-200';
+                
+                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`;
+                
+                const div = document.createElement('div');
+                div.className = `flex items-center justify-between p-4 rounded-xl ${rankClass} ${isMe ? 'shadow-md border-primary' : ''}`;
+                
+                div.innerHTML = `
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 text-center font-extrabold text-lg text-gray-700">${medal}</div>
+                        <div>
+                            <div class="font-bold text-gray-800 ${isMe ? 'text-primary' : ''}">${player.name} ${isMe ? '(You)' : ''}</div>
+                            <div class="text-xs text-gray-500">Modules Completed: ${player.unlockedLevel}/4</div>
+                        </div>
+                    </div>
+                    <div class="font-extrabold text-amber-500 flex items-center gap-1">
+                        ${player.xp || 0} <i class="fa-solid fa-star text-sm"></i>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // --- STREAMING_CHUNK:Map & Lesson Logic ---
+        function renderMap() {
+            const mapNodesContainer = document.getElementById('map-nodes');
+            mapNodesContainer.innerHTML = '';
+            
+            moduleData.forEach((mod, index) => {
+                const isUnlocked = index <= unlockedLevel;
+                const isCompleted = index < unlockedLevel;
+                
+                const nodeOuter = document.createElement('div');
+                nodeOuter.className = 'relative w-full z-10';
+
+                if (index < moduleData.length - 1) {
+                    const line = document.createElement('div');
+                    line.className = `path-line ${isCompleted ? 'unlocked' : ''}`;
+                    nodeOuter.appendChild(line);
+                }
+
+                const nodeBtn = document.createElement('button');
+                let baseClasses = 'w-full p-6 rounded-2xl shadow-lg flex items-center justify-between text-left transition-all border-4 ';
+                
+                if (isUnlocked) {
+                    baseClasses += `bg-white border-white hover:border-${mod.bgColor.split('-')[1]}-500 transform hover:-translate-y-1 cursor-pointer`;
+                    nodeBtn.onclick = () => window.openLesson(index);
+                } else {
+                    baseClasses += 'bg-gray-100 border-gray-100 opacity-70 cursor-not-allowed';
+                }
+                nodeBtn.className = baseClasses;
+
+                nodeBtn.innerHTML = `
+                    <div class="flex items-center gap-4">
+                        <div class="w-16 h-16 rounded-full flex items-center justify-center text-3xl text-white ${isUnlocked ? mod.bgColor : 'bg-gray-400'} shadow-inner">
+                            <i class="fa-solid ${mod.icon}"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-extrabold ${isUnlocked ? 'text-gray-800' : 'text-gray-400'}">${mod.title}</h3>
+                            <p class="text-sm font-bold ${isUnlocked ? 'text-gray-500' : 'text-gray-400'}">${isCompleted ? '<i class="fa-solid fa-check-circle text-success"></i> Passed (+100 XP)' : (isUnlocked ? 'Click to start' : 'Locked')}</p>
+                        </div>
+                    </div>
+                    <div>
+                        <i class="fa-solid ${isUnlocked ? 'fa-chevron-right text-gray-400' : 'fa-lock text-gray-300'} text-2xl"></i>
+                    </div>
+                `;
+
+                nodeOuter.appendChild(nodeBtn);
+                mapNodesContainer.appendChild(nodeOuter);
+            });
+        }
+
+        window.openLesson = function(id) {
+            currentModuleId = id;
+            const mod = moduleData[id];
+            
+            document.getElementById('lesson-title').innerText = mod.title;
+            document.getElementById('lesson-title').className = `text-3xl font-extrabold ${mod.color}`;
+            document.getElementById('lesson-animation').innerHTML = mod.animationHTML;
+            document.getElementById('lesson-content').innerHTML = mod.contentHTML;
+            
+            document.getElementById('btn-take-exam').onclick = () => window.startQuiz(id);
+            
+            showView('view-lesson');
+        }
+
+        // --- STREAMING_CHUNK:Quiz System Logic ---
+        window.startQuiz = function(id) {
+            currentModuleId = id;
+            currentQuestionIndex = 0;
+            score = 0;
+            showView('view-quiz');
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            selectedOption = null;
+            const mod = moduleData[currentModuleId];
+            const qData = mod.questions[currentQuestionIndex];
+            
+            document.getElementById('quiz-counter').innerText = `Question ${currentQuestionIndex + 1} of ${mod.questions.length}`;
+            document.getElementById('question-text').innerText = qData.q;
+            
+            const optionsContainer = document.getElementById('options-container');
+            optionsContainer.innerHTML = '';
+            
+            qData.options.forEach((opt, idx) => {
+                const btn = document.createElement('div');
+                btn.className = 'quiz-option border-2 border-gray-200 rounded-xl p-4 font-bold text-gray-700 bg-gray-50 hover:bg-gray-100 flex items-center gap-3';
+                btn.innerHTML = `<div class="w-6 h-6 rounded-full border-2 border-gray-400 flex-shrink-0 flex items-center justify-center option-indicator"></div> ${opt}`;
+                
+                btn.onclick = () => window.selectOption(idx, btn);
+                optionsContainer.appendChild(btn);
+            });
+
+            const submitBtn = document.getElementById('btn-submit-answer');
+            submitBtn.disabled = true;
+            submitBtn.innerText = "Submit Answer";
+            submitBtn.onclick = checkAnswer;
+        }
+
+        window.selectOption = function(idx, btnElement) {
+            selectedOption = idx;
+            
+            document.querySelectorAll('.quiz-option').forEach(el => {
+                el.classList.remove('selected', 'border-primary', 'bg-indigo-50');
+                el.querySelector('.option-indicator').innerHTML = '';
+                el.querySelector('.option-indicator').classList.remove('border-primary');
+            });
+            
+            btnElement.classList.add('selected');
+            btnElement.querySelector('.option-indicator').innerHTML = '<div class="w-3 h-3 bg-primary rounded-full"></div>';
+            btnElement.querySelector('.option-indicator').classList.add('border-primary');
+            
+            document.getElementById('btn-submit-answer').disabled = false;
+        }
+
+        function checkAnswer() {
+            const mod = moduleData[currentModuleId];
+            const qData = mod.questions[currentQuestionIndex];
+            const options = document.querySelectorAll('.quiz-option');
+            
+            options.forEach(opt => opt.style.pointerEvents = 'none');
+            
+            if (selectedOption === qData.ans) {
+                options[selectedOption].classList.add('correct');
+                score++;
+            } else {
+                options[selectedOption].classList.add('wrong');
+                options[qData.ans].classList.add('correct');
+            }
+
+            const submitBtn = document.getElementById('btn-submit-answer');
+            submitBtn.innerText = currentQuestionIndex < mod.questions.length - 1 ? "Next Question" : "Finish Exam";
+            submitBtn.onclick = nextQuestion;
+        }
+
+        function nextQuestion() {
+            const mod = moduleData[currentModuleId];
+            if (currentQuestionIndex < mod.questions.length - 1) {
+                currentQuestionIndex++;
+                loadQuestion();
+            } else {
+                finishQuiz();
+            }
+        }
+
+        function finishQuiz() {
+            const mod = moduleData[currentModuleId];
+            const totalQs = mod.questions.length;
+            
+            if (score === totalQs) {
+                let xpGained = false;
+                
+                // Only grant XP and level up if it's the FIRST time passing this specific module
+                if (currentModuleId === unlockedLevel) {
+                    unlockedLevel++;
+                    xp += 100;
+                    xpGained = true;
+                    updateProgressUI();
+                    syncProgressToCloud(); // Save to Firebase!
+                }
+                
+                let title = "Level Cleared! 🏆";
+                let msg = `Perfect score! You mastered ${mod.title}.`;
+                let icon = "🎉";
+                
+                if(unlockedLevel === 4) {
+                    title = "OOP Master! 🎓";
+                    msg = "You have completed all modules! Check the leaderboard to see your rank.";
+                    icon = "👑";
+                }
+                
+                showAlert(title, msg, icon, "success", xpGained, () => {
+                    goHome();
+                });
+                
+            } else {
+                showAlert("Keep Trying! 💪", `You scored ${score}/${totalQs}. You need a perfect score (5/5) to advance and earn XP.`, "📚", "danger", false, () => {
+                    window.openLesson(currentModuleId);
+                });
+            }
+        }
+
+        function showAlert(title, msg, icon, type, showXp = false, callback) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-title').className = `text-3xl font-extrabold mb-2 text-${type}`;
+            document.getElementById('modal-msg').innerText = msg;
+            document.getElementById('modal-icon').innerText = icon;
+            
+            const xpText = document.getElementById('modal-xp');
+            if(showXp) {
+                xpText.classList.remove('hidden-view');
+            } else {
+                xpText.classList.add('hidden-view');
+            }
+            
+            const btn = document.getElementById('btn-modal-close');
+            btn.className = `btn-game w-full py-3 text-white font-bold rounded-xl text-lg bg-${type}`;
+            btn.onclick = () => {
+                modal.classList.add('hidden-view');
+                if (callback) callback();
+            };
+            
+            modal.classList.remove('hidden-view');
+        }
+
+    </script>
+</body>
+</html>
